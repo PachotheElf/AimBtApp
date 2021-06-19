@@ -23,6 +23,7 @@ const SvcCard = ({service, navigation}:Props)=>{
   const dispatch = useDispatch();
 
   useEffect(()=>{
+    let isMounted = true;
     (async ()=>{
       try{
         dispatch(addLog({deviceId:service.deviceID, log:`Getting characteristics for service ${resolveUUID(service.uuid, "service")}`}))
@@ -30,13 +31,14 @@ const SvcCard = ({service, navigation}:Props)=>{
         dispatch(addLog({deviceId:service.deviceID, log:`Characteristics for service '${resolveUUID(service.uuid, "service")}': ${charList.reduce((acc, chara, index)=>{
           return acc + "\n\t\t└>" + resolveUUID(chara.uuid, "characteristic");
         },"")}`}))
-        setCharacteristics(charList);
+        isMounted&&setCharacteristics(charList);
         //console.log(charList);
       }catch(err){
         dispatch(addLog({deviceId:service.deviceID, log:`Error: ${err.message}`}))
         //console.log(JSON.stringify(err, null, 2))
       }
     })();
+    return ()=>{isMounted = false;}
   },[])
 
   return (

@@ -25,6 +25,7 @@ type Props = {
 
 const BtCard = ({bleDevice, navigation}:Props)=>{
     const dispatch = useDispatch();
+    const [connectOnCreate, setConnectOnCreate] = useState(false);
     const [connect, setConnect] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [connected, setConnected] = useState(false);
@@ -34,7 +35,7 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
     
 
     function tryConnect(){
-        setConnect(!(connecting || connected));
+        setConnect(!connect);
     }
 
     function navigateLogs(){
@@ -56,62 +57,60 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
 
     useEffect(()=>{
         let isMounted = true;
-        if(connect){
-            if(connecting || connected) return;
-            dispatch(setScanning(false));
-            setConnecting(true);
-            setConnectState("Connecting...")
-            //console.log(`Connecting to ${bleDevice.id}...`);
-            dispatch(addLog({deviceId:bleDevice.id, log:`Connecting to ${bleDevice.id}...`}))
-            ble.isDeviceConnected(bleDevice.id)
-            .then(async isConnected=>{
-                if(isConnected){
-                    isMounted&&setConnecting(false);
-                    isMounted&&setConnected(true);
-                    isMounted&&setConnectState("Connected!");
-                    return;
-                }
-                try{
-                    const device = await ble.connectToDevice(bleDevice.id, {timeout:10000})
-                    //console.log(`Connected to ${device.id}!`);
-                    dispatch(addLog({deviceId:bleDevice.id, log:`Connected to ${bleDevice.id}!`}))
-                    isMounted&&setConnecting(false);
-                    isMounted&&setConnected(true);
-                    isMounted&&setConnectState("Connected!");
-                    dispatch(addLog({deviceId:bleDevice.id, log:`Discovering services and characteristics...`}))
-                    await device.discoverAllServicesAndCharacteristics();
-                    dispatch(addLog({deviceId:bleDevice.id, log:`Services and characteristics discovered!`}))
-                    const serviceAmount = (await device.services()).length
-                    dispatch(addLog({deviceId:bleDevice.id, log:`${serviceAmount} service${serviceAmount == 1 ? '' : 's'} available.`}))
-                    setServices(serviceAmount)
-                }
-                catch(err){
-                    dispatch(addLog({deviceId:bleDevice.id, log:err.message}))
-                    //console.log(JSON.stringify(err, null, 2))
-                    isMounted&&setConnected(false);
-                    isMounted&&setConnecting(false);
-                    isMounted&&setConnectState("Disconnected");
-                }
-            })
-            
-        }else{
-            if(connecting || connected){
-                //console.log(`Disconnecting from ${bleDevice.id}...`)
-                ble.cancelDeviceConnection(bleDevice.id)
-                .then(device=>{
-                    isMounted&&setConnected(false);
-                    isMounted&&setConnecting(false);
-                    isMounted&&setConnectState("Disconnected");
-                    dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${bleDevice.id}`}))
-                })
-                .catch(err=>{
-                    dispatch(addLog({deviceId:bleDevice.id, log:err.message}))
-                    //console.log(JSON.stringify(err, null, 2))
-                })
-            }else{
-                dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${bleDevice.id}`}))
-            }
+        if(!connectOnCreate){
+            setConnectOnCreate(true);
+            return;
         }
+        if(connecting || connected){
+            //console.log(`Disconnecting from ${bleDevice.id}...`)
+            ble.cancelDeviceConnection(bleDevice.id)
+            .then(device=>{
+                isMounted&&setConnected(false);
+                isMounted&&setConnecting(false);
+                isMounted&&setConnectState("Disconnected");
+                dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${bleDevice.id}`}))
+            })
+            .catch(err=>{
+                dispatch(addLog({deviceId:bleDevice.id, log:err.message}))
+                //console.log(JSON.stringify(err, null, 2))
+            })
+            return;
+        }
+        dispatch(setScanning(false));
+        isMounted&&setConnecting(true);
+        isMounted&&setConnectState("Connecting...")
+        //console.log(`Connecting to ${bleDevice.id}...`);
+        dispatch(addLog({deviceId:bleDevice.id, log:`Connecting to ${bleDevice.id}...`}))
+        ble.isDeviceConnected(bleDevice.id)
+        .then(async isConnected=>{
+            if(isConnected){
+                isMounted&&setConnecting(false);
+                isMounted&&setConnected(true);
+                isMounted&&setConnectState("Connected!");
+                return;
+            }
+            try{
+                const device = await ble.connectToDevice(bleDevice.id, {timeout:10000})
+                //console.log(`Connected to ${device.id}!`);
+                dispatch(addLog({deviceId:bleDevice.id, log:`Connected to ${bleDevice.id}!`}))
+                isMounted&&setConnecting(false);
+                isMounted&&setConnected(true);
+                isMounted&&setConnectState("Connected!");
+                dispatch(addLog({deviceId:bleDevice.id, log:`Discovering services and characteristics...`}))
+                await device.discoverAllServicesAndCharacteristics();
+                dispatch(addLog({deviceId:bleDevice.id, log:`Services and characteristics discovered!`}))
+                const serviceAmount = (await device.services()).length
+                dispatch(addLog({deviceId:bleDevice.id, log:`${serviceAmount} service${serviceAmount == 1 ? '' : 's'} available.`}))
+                setServices(serviceAmount)
+            }
+            catch(err){
+                dispatch(addLog({deviceId:bleDevice.id, log:err.message}))
+                //console.log(JSON.stringify(err, null, 2))
+                isMounted&&setConnected(false);
+                isMounted&&setConnecting(false);
+                isMounted&&setConnectState("Disconnected");
+            }
+        })
         return ()=>{isMounted = false}
     }, [connect])
     return(

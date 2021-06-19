@@ -28,15 +28,17 @@ const Characteristics = ({route, navigation}:Props)=>{
   const {deviceId, serviceUUID} = route.params;
   const [services, setServices] = useState<Array<Characteristic>>([])
   useEffect(()=>{
+    let isMounted = true;
     (async ()=>{
       try{
         const svcList = await ble.characteristicsForDevice(deviceId,serviceUUID)
-        setServices(svcList);
+        isMounted&&setServices(svcList);
       }catch(err){
         dispatch(addLog({deviceId:deviceId, log:`Error: ${err.message}`}))
         //console.log(JSON.stringify(err, null, 2));
       }
     })();
+    return ()=>{isMounted=false;}
   },[])
 
   return (

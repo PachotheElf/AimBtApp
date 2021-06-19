@@ -23,7 +23,7 @@ const CharCard = ({characteristic, navigation}:Props)=>{
   const dispatch = useDispatch();
   const [descriptors, setDescriptors] = useState<Array<Descriptor>>([]);
   useEffect(()=>{
-    
+    let isMounted = true;
     (async ()=>{
       try{
         dispatch(addLog({deviceId:characteristic.deviceID, log:`Getting descriptors for characteristic '${resolveUUID(characteristic.uuid, "characteristic")}' in service '${resolveUUID(characteristic.serviceUUID, "service")}'`}))
@@ -32,13 +32,14 @@ const CharCard = ({characteristic, navigation}:Props)=>{
         dispatch(addLog({deviceId:characteristic.deviceID, log:`Descriptors for characteristic '${resolveUUID(characteristic.uuid, "characteristic")}' in service '${resolveUUID(characteristic.serviceUUID, "service")}': ${descList.reduce((acc, desc, index)=>{
           return acc + "\n\t\t└>" + resolveUUID(desc.uuid, "descriptor");
         },"")}`}))
-        setDescriptors(descList);
+        isMounted&&setDescriptors(descList);
         //console.log(descriptors);
       }catch(err){
         dispatch(addLog({deviceId:characteristic.deviceID, log:"Error: " + err.message}))
         //console.log(JSON.stringify(err, null, 2))
       }
     })();
+    return ()=>{isMounted = false}
   },[])
 
   return (

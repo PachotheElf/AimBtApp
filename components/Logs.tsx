@@ -27,7 +27,7 @@ const Logs = ({route, bleState}:Props)=>{
     })
     if(!device || !device.logs) return;
     setLogs(device.logs)
-  },[])
+  },[bleState]) 
   return(
     <ScrollView style={styles.container}>
       {
