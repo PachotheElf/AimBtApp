@@ -11,6 +11,17 @@ import { ble } from "../BleManager";
 import { BleDeviceState, BleService, BleState, setScanning } from "../reducers/bleReducer";
 import service_uuids from '../assets/bluetooth-numbers-database/service_uuids.json'
 import { Device } from "react-native-ble-plx";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../types";
+
+type HomeNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'Home'
+>;
+type Props = {
+  navigation: HomeNavigationProp;
+  bleDevice:BleDeviceState;
+};
 
 function resolveSvcUUID(uuid:string){
     const svc = service_uuids.find(service=>{
@@ -19,14 +30,20 @@ function resolveSvcUUID(uuid:string){
     return svc? svc.name : uuid;
 }
 
-const BtCard = ({bleDevice, bleState}:{bleDevice:BleDeviceState, bleState:BleState})=>{
+const BtCard = ({bleDevice, navigation}:Props)=>{
     const dispatch = useDispatch();
     const [connect, setConnect] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [connected, setConnected] = useState(false);
     const [connectState, setConnectState] = useState("Disconnected");
+    const [device, setDevice] = useState<Device>();
 
     useEffect(()=>{
+
+        ble.devices([bleDevice.id]).then(devices=>{
+            const found = devices.find(dvc=>{ return dvc.id == bleDevice.id})
+            if(found) setDevice(found);
+        })
         
         const onDisconnectSub = ble.onDeviceDisconnected(bleDevice.id, (err, device)=>{
             if(err){
@@ -42,8 +59,17 @@ const BtCard = ({bleDevice, bleState}:{bleDevice:BleDeviceState, bleState:BleSta
     })
 
     useEffect(()=>{
+        (async ()=>{
+            const isConnected = await device?.isConnected();
+            setConnected(!!isConnected);
+            connecting && isConnected && setConnecting(false);
+        })();
+    }, [device])
+
+    useEffect(()=>{
         if(connect){
             if(connecting || connected) return;
+            dispatch(setScanning(false));
             setConnecting(true);
             setConnectState("Connecting...")
             console.log(`Connecting to ${bleDevice.id}...`);
@@ -86,6 +112,10 @@ const BtCard = ({bleDevice, bleState}:{bleDevice:BleDeviceState, bleState:BleSta
         <Card>
             <Card.Title>{bleDevice.name ? bleDevice.name : bleDevice.id}</Card.Title>
             <Card.Divider/>
+            <View style={styles.cardText}>
+                <Button title="Logs" disabled={!connected} onPress={()=>{}}/>
+                <Button title="Services" disabled={!connected} onPress={()=>{ device && navigation.navigate('Services', {id:device.id})}}/>
+            </View>
             <View style={styles.cardText}>
                 <Text>{bleDevice.id}</Text>
                 <Text>{connectState}</Text>
