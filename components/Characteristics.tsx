@@ -6,7 +6,9 @@ import {
   StyleSheet
 } from 'react-native';
 import { Characteristic } from "react-native-ble-plx";
+import { useDispatch } from "react-redux";
 import { ble } from "../BleManager";
+import { addLog } from "../reducers/bleReducer";
 import { RootStackParamList } from "../types";
 import CharCard from "./CharCard";
 
@@ -22,6 +24,7 @@ type Props = {
 };
 
 const Characteristics = ({route, navigation}:Props)=>{
+  const dispatch = useDispatch();
   const {deviceId, serviceUUID} = route.params;
   const [services, setServices] = useState<Array<Characteristic>>([])
   useEffect(()=>{
@@ -30,7 +33,8 @@ const Characteristics = ({route, navigation}:Props)=>{
         const svcList = await ble.characteristicsForDevice(deviceId,serviceUUID)
         setServices(svcList);
       }catch(err){
-        console.log(JSON.stringify(err, null, 2));
+        dispatch(addLog({deviceId:deviceId, log:`Error: ${err.message}`}))
+        //console.log(JSON.stringify(err, null, 2));
       }
     })();
   },[])

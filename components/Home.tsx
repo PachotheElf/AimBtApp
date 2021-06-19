@@ -24,9 +24,6 @@ type Props = {
 };
 
  const Home  = ({bleState, dispatch, navigation}:Props)=>{
-  useEffect(()=>{
-    console.log(JSON.stringify(bleState, undefined, 2));
-  },[bleState.devices])
 
   return (
     <View style={styles.container}>

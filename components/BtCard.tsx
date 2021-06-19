@@ -12,6 +12,7 @@ import { addLog, BleDeviceState, BleService, BleState, setScanning } from "../re
 import { Device } from "react-native-ble-plx";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types";
+import { InteractionManager } from "react-native";
 
 type HomeNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -30,86 +31,88 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
     const [connectState, setConnectState] = useState("Disconnected");
     const [device, setDevice] = useState<Device>();
     const [services, setServices] = useState<number>(0);
+    
+
+    function tryConnect(){
+        setConnect(!(connecting || connected));
+    }
+
+    function navigateLogs(){
+        navigation.navigate("Logs", {deviceId:bleDevice.id})
+    }
+
+    function navigateServices(){
+        navigation.navigate('Services', {deviceId:bleDevice.id})
+    }
 
     useEffect(()=>{
-
+        let isMounted = true;
         ble.devices([bleDevice.id]).then(devices=>{
             const found = devices.find(dvc=>{ return dvc.id == bleDevice.id})
-            if(found) setDevice(found);
-        })
-        
-        const onDisconnectSub = ble.onDeviceDisconnected(bleDevice.id, (err, device)=>{
-            if(err){
-                console.log(err);
-                return;
-            }
-            console.log(`Disconnected from ${device? device.id: ''}`)
-            dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${device? device.id: ''}`}))
-            setConnectState("Disconnected!");
-            setConnecting(false);
-            setConnected(false);
-        })
-        return ()=>{onDisconnectSub.remove()};
-    })
+            if(found && isMounted) setDevice(found);
+        });
+        return ()=>{isMounted = false;}
+    }, [])
 
     useEffect(()=>{
-        (async ()=>{
-            const isConnected = await device?.isConnected();
-            setConnected(!!isConnected);
-            connecting && isConnected && setConnecting(false);
-        })();
-    }, [device])
-
-    useEffect(()=>{
+        let isMounted = true;
         if(connect){
             if(connecting || connected) return;
             dispatch(setScanning(false));
             setConnecting(true);
             setConnectState("Connecting...")
-            console.log(`Connecting to ${bleDevice.id}...`);
+            //console.log(`Connecting to ${bleDevice.id}...`);
             dispatch(addLog({deviceId:bleDevice.id, log:`Connecting to ${bleDevice.id}...`}))
             ble.isDeviceConnected(bleDevice.id)
             .then(async isConnected=>{
                 if(isConnected){
-                    setConnecting(false);
-                    setConnected(true);
-                    setConnectState("Connected!");
+                    isMounted&&setConnecting(false);
+                    isMounted&&setConnected(true);
+                    isMounted&&setConnectState("Connected!");
                     return;
                 }
                 try{
                     const device = await ble.connectToDevice(bleDevice.id, {timeout:10000})
-                    console.log(`Connected to ${device.id}!`);
+                    //console.log(`Connected to ${device.id}!`);
                     dispatch(addLog({deviceId:bleDevice.id, log:`Connected to ${bleDevice.id}!`}))
-                    setConnecting(false);
-                    setConnected(true);
-                    setConnectState("Connected!");
-                    dispatch(addLog({deviceId:bleDevice.id, log:`Discovering all services and characteristics...`}))
+                    isMounted&&setConnecting(false);
+                    isMounted&&setConnected(true);
+                    isMounted&&setConnectState("Connected!");
+                    dispatch(addLog({deviceId:bleDevice.id, log:`Discovering services and characteristics...`}))
                     await device.discoverAllServicesAndCharacteristics();
                     dispatch(addLog({deviceId:bleDevice.id, log:`Services and characteristics discovered!`}))
-                    setServices((await device.services()).length)
+                    const serviceAmount = (await device.services()).length
+                    dispatch(addLog({deviceId:bleDevice.id, log:`${serviceAmount} service${serviceAmount == 1 ? '' : 's'} available.`}))
+                    setServices(serviceAmount)
                 }
                 catch(err){
-                    console.log(JSON.stringify(err, null, 2))
-                    setConnected(false);
-                    setConnecting(false);
-                    setConnectState("Disconnected");
+                    dispatch(addLog({deviceId:bleDevice.id, log:err.message}))
+                    //console.log(JSON.stringify(err, null, 2))
+                    isMounted&&setConnected(false);
+                    isMounted&&setConnecting(false);
+                    isMounted&&setConnectState("Disconnected");
                 }
             })
             
         }else{
             if(connecting || connected){
-                console.log(`Disconnecting from ${bleDevice.id}...`)
+                //console.log(`Disconnecting from ${bleDevice.id}...`)
                 ble.cancelDeviceConnection(bleDevice.id)
                 .then(device=>{
-                    setConnected(false);
-                    setConnecting(false);
-                    setConnectState("Disconnected");
+                    isMounted&&setConnected(false);
+                    isMounted&&setConnecting(false);
+                    isMounted&&setConnectState("Disconnected");
+                    dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${bleDevice.id}`}))
                 })
                 .catch(err=>{
-                    console.log(JSON.stringify(err, null, 2))
+                    dispatch(addLog({deviceId:bleDevice.id, log:err.message}))
+                    //console.log(JSON.stringify(err, null, 2))
                 })
+            }else{
+                dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${bleDevice.id}`}))
             }
         }
+        return ()=>{isMounted = false}
     }, [connect])
     return(
         <Card>
@@ -117,8 +120,8 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
             <Card.Divider/>
             <Text># Services in device: {services}</Text>
             <View style={styles.cardText}>
-                <Button title="Logs" disabled={!bleDevice.logs || bleDevice.logs.length <= 0} onPress={()=>{navigation.navigate("Logs", {deviceId:bleDevice.id})}}/>
-                <Button title="Services" disabled={services <= 0} onPress={()=>{ navigation.navigate('Services', {deviceId:bleDevice.id})}}/>
+                <Button title="Logs" disabled={!bleDevice.logs || bleDevice.logs.length <= 0} onPress={navigateLogs}/>
+                <Button title="Services" disabled={services <= 0} onPress={navigateServices}/>
             </View>
             <View style={styles.cardText}>
                 <Text>{bleDevice.id}</Text>
@@ -130,7 +133,7 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
             </View>
             <Button
                 title={connecting || connected?'Disconnect':'Connect'}
-                onPress={()=>{setConnect(!(connecting || connected))}}/>
+                onPress={tryConnect}/>
         </Card>
     );
 }

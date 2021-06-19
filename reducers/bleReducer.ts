@@ -64,7 +64,7 @@ const bleSlice = createSlice({
             })
             if(!deviceState) return;
             if(!deviceState.logs) deviceState.logs = [];
-            deviceState.logs = [...deviceState.logs, log];
+            deviceState.logs = [...deviceState.logs, ("-> " + log)];
         }
     }
 })

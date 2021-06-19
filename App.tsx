@@ -31,15 +31,15 @@ export const RootStack = createStackNavigator<RootStackParamList>();
   function setScan(scanState:boolean){
     dispatch(setScanning(scanState));
     if(scanState){
-      console.log("Scan started.");
+      //console.log("Scan started.");
       dispatch(clearBleDevices());
       ble.startDeviceScan(null, null, (err, device)=>{
         if(err){
-          console.log(err);
+          //console.log(err);
           return;
         }
         if(!device){
-          console.log("No device after scan.")
+          //console.log("No device after scan.")
           return;
         }
         dispatch(addBleDevice({
@@ -51,7 +51,7 @@ export const RootStack = createStackNavigator<RootStackParamList>();
         }));
       })
     }else{
-      console.log("Scan stopped.");
+      //console.log("Scan stopped.");
       ble.stopDeviceScan();
     }
   }

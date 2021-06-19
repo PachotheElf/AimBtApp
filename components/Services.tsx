@@ -6,7 +6,10 @@ import {
 } from 'react-native';
 import { Device, Service } from 'react-native-ble-plx';
 import { Card } from "react-native-elements";
+import { useDispatch } from 'react-redux';
 import { ble } from '../BleManager';
+import { resolveUUID } from '../common_functions';
+import { addLog } from '../reducers/bleReducer';
 import { RootStackParamList } from '../types';
 import SvcCard from './SvcCard';
 
@@ -22,15 +25,23 @@ type Props = {
 };
 
  const Services  = ({route, navigation}:Props)=>{
+   const dispatch = useDispatch();
    const {deviceId: deviceId} = route.params;
    const [services, setServices] = useState<Array<Service>>([])
+   const [lastError, setLastError] = useState<string>();
   useEffect(()=>{
     (async ()=>{
       try{
+        dispatch(addLog({deviceId:deviceId, log:`Querying services...`}))
         const svcList = await ble.servicesForDevice(deviceId)
+        dispatch(addLog({deviceId:deviceId, log:`Services available: ${svcList.reduce((acc, svc)=>{
+          return acc + "\n\t\t└>" +resolveUUID(svc.uuid, "service");
+        },"")}`}))
         setServices(svcList);
+        setLastError(undefined);
       }catch(err){
-        console.log(JSON.stringify(err, null, 2));
+        dispatch(addLog({deviceId:deviceId, log:err.message}))
+        setLastError("Error: " + err.message);
       }
     })();
   },[])
@@ -38,9 +49,10 @@ type Props = {
   return (
     <ScrollView style={styles.container}>
       {
-        services.map(service=>(
+        !lastError ? services.map(service=>(
           <SvcCard key={service.id} service={service} navigation={navigation}/>
         ))
+        : <Text>{lastError}</Text>
       }
     </ScrollView>
   );
