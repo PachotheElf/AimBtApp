@@ -11,10 +11,10 @@ export interface BleService{
 }
 export interface BleDeviceState{
     id:string;
-    name?:string;
-    mtu?:number;
-    rssi?:number;
-    services?:Array<BleService>
+    name?:string|null;
+    mtu?:number|null;
+    rssi?:number|null;
+    manufacturer?:string|null;
 }
 const initialState:BleState={
     devices:[],

@@ -8,83 +8,95 @@ import {
 import { Card } from "react-native-elements";
 import { useDispatch } from "react-redux";
 import { ble } from "../BleManager";
-import { editBleDevice, BleDeviceState, BleService, BleState, setScanning } from "../reducers/bleReducer";
+import { BleDeviceState, BleService, BleState, setScanning } from "../reducers/bleReducer";
+import service_uuids from '../assets/bluetooth-numbers-database/service_uuids.json'
+import { Device } from "react-native-ble-plx";
 
-const BtCard = ({bleDeviceState, bleState}:{bleDeviceState:BleDeviceState, bleState:BleState})=>{
+function resolveSvcUUID(uuid:string){
+    const svc = service_uuids.find(service=>{
+        return service.uuid.toUpperCase() == uuid.toUpperCase();
+    })
+    return svc? svc.name : uuid;
+}
+
+const BtCard = ({bleDevice, bleState}:{bleDevice:BleDeviceState, bleState:BleState})=>{
     const dispatch = useDispatch();
     const [connect, setConnect] = useState(false);
+    const [connecting, setConnecting] = useState(false);
+    const [connected, setConnected] = useState(false);
     const [connectState, setConnectState] = useState("Disconnected");
 
     useEffect(()=>{
         
-        const onDisconnectSub = ble.onDeviceDisconnected(bleDeviceState.id, (err, device)=>{
+        const onDisconnectSub = ble.onDeviceDisconnected(bleDevice.id, (err, device)=>{
+            if(err){
+                console.log(err);
+                return;
+            }
+            console.log(`Disconnected from ${device? device.id: ''}`)
             setConnectState("Disconnected!");
-            setConnect(false);
+            setConnecting(false);
+            setConnected(false);
         })
         return ()=>{onDisconnectSub.remove()};
     })
-    const tryConnect = (newConnectState:boolean)=>{
-        setConnect(newConnectState);
-        
-        if(newConnectState){
-            if(bleState.scanning){
-                ble.stopDeviceScan();
-                dispatch(setScanning(false));
-            }
-            
-            console.log("Connecting to", bleDeviceState.id);
+
+    useEffect(()=>{
+        if(connect){
+            if(connecting || connected) return;
+            setConnecting(true);
             setConnectState("Connecting...")
-            ble.connectToDevice(bleDeviceState.id)
-            .then((data)=>{
-                
-                setConnectState("Connected!")
-                console.log("Connected to: ", {...data})
-                ble.discoverAllServicesAndCharacteristicsForDevice(bleDeviceState.id)
-                .then((data)=>{
-                    console.log("Services and chars:", {...data})
-                    ble.servicesForDevice(bleDeviceState.id)
-                    .then((services)=>{
-                        console.log("Services:", services)
-                        dispatch(editBleDevice({
-                            id:bleDeviceState.id,
-                            services:services.map<BleService>(svc=>{
-                                return {
-                                    id:svc.id,
-                                    isPrimary:svc.isPrimary,
-                                    uuid:svc.uuid,
-                                }
-                            })
-                        }))
-                    })
+            console.log(`Connecting to ${bleDevice.id}...`);
+            ble.isDeviceConnected(bleDevice.id)
+            .then(async isConnected=>{
+                if(isConnected){
+                    setConnecting(false);
+                    setConnected(true);
+                    setConnectState("Connected!");
+                    return;
+                }
+                try{
+                    const device = await ble.connectToDevice(bleDevice.id, {timeout:10000})
+                    console.log(`Connected to ${device.id}!`);
+                    setConnecting(false);
+                    setConnected(true);
+                    setConnectState("Connected!");
+                    await device.discoverAllServicesAndCharacteristics()
+                    const services = await device.services()
+                    console.log(`${device.id} services:`, services)
+                }
+                catch(err){
+                    console.log(JSON.stringify(err, null, 2))
+                }
+            })
+            
+        }else{
+            if(connecting || connected){
+                console.log(`Disconnecting from ${bleDevice.id}...`)
+                ble.cancelDeviceConnection(bleDevice.id)
+                .then(device=>{
                 })
                 .catch(err=>{
-                    console.log("Failed to discover: ", JSON.stringify(err));
+                    console.log(JSON.stringify(err, null, 2))
                 })
-            }).catch(err=>{
-                console.log("Failed to connect: ", JSON.stringify(err));
-                setConnectState("Failed to connect")
-                setConnect(false);
-            })
-        }else{
-            setConnectState("Disconnected!")
-            ble.cancelDeviceConnection(bleDeviceState.id).catch(console.log);
+            }
         }
-    }
+    }, [connect])
     return(
         <Card>
-            <Card.Title>{bleDeviceState.name ? bleDeviceState.name : bleDeviceState.id}</Card.Title>
+            <Card.Title>{bleDevice.name ? bleDevice.name : bleDevice.id}</Card.Title>
             <Card.Divider/>
             <View style={styles.cardText}>
-                <Text>{bleDeviceState.id}</Text>
+                <Text>{bleDevice.id}</Text>
                 <Text>{connectState}</Text>
             </View>
             <View style={styles.cardText}>
-                <Text>rssi: {bleDeviceState.rssi? `${bleDeviceState.rssi}dbi` : 'N/A'}</Text>
-                <Text>mtu: {bleDeviceState.mtu? bleDeviceState.mtu : 'N/A'}</Text>
+                <Text>rssi: {bleDevice.rssi? `${bleDevice.rssi}dbi` : 'N/A'}</Text>
+                <Text>mtu: {bleDevice.mtu? bleDevice.mtu : 'N/A'}</Text>
             </View>
             <Button
-                title={connect?'Disconnect':'Connect'}
-                onPress={()=>{tryConnect(!connect)}}/>
+                title={connecting || connected?'Disconnect':'Connect'}
+                onPress={()=>{setConnect(!(connecting || connected))}}/>
         </Card>
     );
 }

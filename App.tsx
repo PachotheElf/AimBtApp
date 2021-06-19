@@ -48,12 +48,12 @@ import { ble } from './BleManager';
           console.log("No device after scan.")
           return;
         }
-        console.log(device);
         dispatch(addBleDevice({
           id:device.id,
-          name:device.name ? device.name : undefined,
-          rssi:device.rssi? device.rssi : undefined,
-          mtu:device.mtu
+          name:device.name,
+          rssi:device.rssi,
+          mtu:device.mtu,
+          manufacturer:device.manufacturerData
         }));
       })
     }else{
@@ -77,7 +77,7 @@ import { ble } from './BleManager';
       <Text>Devices found: {bleState.devices.length}</Text>
       <ScrollView>
         {
-          bleState.devices.map(device=><BtCard key={device.id} bleDeviceState={device} bleState={bleState}/>)
+          bleState.devices.map(device=><BtCard key={device.id} bleDevice={device} bleState={bleState}/>)
         }
       </ScrollView>
     </SafeAreaView>
