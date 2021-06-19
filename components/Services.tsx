@@ -4,58 +4,52 @@ import React, { useEffect, useState } from 'react';
 import {
   ScrollView, StatusBar, StyleSheet, Text, View
 } from 'react-native';
-import { Service } from 'react-native-ble-plx';
+import { Device, Service } from 'react-native-ble-plx';
 import { Card } from "react-native-elements";
 import { ble } from '../BleManager';
 import { RootStackParamList } from '../types';
+import SvcCard from './SvcCard';
 
-type HomeRouteProp = RouteProp<RootStackParamList, 'Services'>;
+type ServicesRouteProp = RouteProp<RootStackParamList, 'Services'>;
 
-type HomeNavigationProp = StackNavigationProp<
+type ServicesNavigationProp = StackNavigationProp<
   RootStackParamList,
   'Services'
 >;
 type Props = {
-  route: HomeRouteProp;
-  navigation: HomeNavigationProp;
+  route: ServicesRouteProp;
+  navigation: ServicesNavigationProp;
 };
 
  const Services  = ({route, navigation}:Props)=>{
-   const {id} = route.params;
-   const [connect, setConnect] = useState(false);
-   const [connecting, setConnecting] = useState(false);
-   const [connected, setConnected] = useState(false);
-   const [connectState, setConnectState] = useState("Disconnected");
+   const {deviceId: deviceId} = route.params;
    const [services, setServices] = useState<Array<Service>>([])
   useEffect(()=>{
     (async ()=>{
-      const isConnected = await ble.isDeviceConnected(id);
-      setConnected(!!isConnected);
-      connecting && isConnected && setConnecting(false);
+      try{
+        const svcList = await ble.servicesForDevice(deviceId)
+        setServices(svcList);
+      }catch(err){
+        console.log(JSON.stringify(err, null, 2));
+      }
     })();
   },[])
 
   return (
-    <View style={styles.container}>
-      <Text>Services found: {services.length}</Text>
-      <ScrollView>
-        {
-          services.map(service=>(
-          <Card>
-            <Card.Title>{service.id}</Card.Title>
-            <Card.Divider/>
-          </Card>))
-        }
-      </ScrollView>
-    </View>
+    <ScrollView style={styles.container}>
+      {
+        services.map(service=>(
+          <SvcCard key={service.id} service={service} navigation={navigation}/>
+        ))
+      }
+    </ScrollView>
   );
 }
 
 
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  paddingTop: StatusBar.currentHeight,
+  flex: 1
   },
 });
  export default Services;

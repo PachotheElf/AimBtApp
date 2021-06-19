@@ -4,5 +4,7 @@ import { Action } from "redux";
 
 type RootStackParamList = {
     Home:undefined,
-    Services:{id:string}
+    Services:{deviceId:string},
+    Characteristics:{deviceId:string, serviceUUID:string},
+    Logs:{deviceId:string}
 }

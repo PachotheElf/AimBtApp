@@ -44,7 +44,6 @@ type Props = {
 const styles = StyleSheet.create({
   container: {
   flex: 1,
-  paddingTop: StatusBar.currentHeight,
   },
 });
  export default connect(state=>({...state}))(Home);

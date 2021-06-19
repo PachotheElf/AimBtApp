@@ -8,8 +8,7 @@ import {
 import { Card } from "react-native-elements";
 import { useDispatch } from "react-redux";
 import { ble } from "../BleManager";
-import { BleDeviceState, BleService, BleState, setScanning } from "../reducers/bleReducer";
-import service_uuids from '../assets/bluetooth-numbers-database/service_uuids.json'
+import { addLog, BleDeviceState, BleService, BleState, setScanning } from "../reducers/bleReducer";
 import { Device } from "react-native-ble-plx";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types";
@@ -23,13 +22,6 @@ type Props = {
   bleDevice:BleDeviceState;
 };
 
-function resolveSvcUUID(uuid:string){
-    const svc = service_uuids.find(service=>{
-        return service.uuid.toUpperCase() == uuid.toUpperCase();
-    })
-    return svc? svc.name : uuid;
-}
-
 const BtCard = ({bleDevice, navigation}:Props)=>{
     const dispatch = useDispatch();
     const [connect, setConnect] = useState(false);
@@ -37,6 +29,7 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
     const [connected, setConnected] = useState(false);
     const [connectState, setConnectState] = useState("Disconnected");
     const [device, setDevice] = useState<Device>();
+    const [services, setServices] = useState<number>(0);
 
     useEffect(()=>{
 
@@ -51,6 +44,7 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
                 return;
             }
             console.log(`Disconnected from ${device? device.id: ''}`)
+            dispatch(addLog({deviceId:bleDevice.id, log:`Disconnected from ${device? device.id: ''}`}))
             setConnectState("Disconnected!");
             setConnecting(false);
             setConnected(false);
@@ -73,6 +67,7 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
             setConnecting(true);
             setConnectState("Connecting...")
             console.log(`Connecting to ${bleDevice.id}...`);
+            dispatch(addLog({deviceId:bleDevice.id, log:`Connecting to ${bleDevice.id}...`}))
             ble.isDeviceConnected(bleDevice.id)
             .then(async isConnected=>{
                 if(isConnected){
@@ -84,15 +79,20 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
                 try{
                     const device = await ble.connectToDevice(bleDevice.id, {timeout:10000})
                     console.log(`Connected to ${device.id}!`);
+                    dispatch(addLog({deviceId:bleDevice.id, log:`Connected to ${bleDevice.id}!`}))
                     setConnecting(false);
                     setConnected(true);
                     setConnectState("Connected!");
-                    await device.discoverAllServicesAndCharacteristics()
-                    const services = await device.services()
-                    console.log(`${device.id} services:`, services)
+                    dispatch(addLog({deviceId:bleDevice.id, log:`Discovering all services and characteristics...`}))
+                    await device.discoverAllServicesAndCharacteristics();
+                    dispatch(addLog({deviceId:bleDevice.id, log:`Services and characteristics discovered!`}))
+                    setServices((await device.services()).length)
                 }
                 catch(err){
                     console.log(JSON.stringify(err, null, 2))
+                    setConnected(false);
+                    setConnecting(false);
+                    setConnectState("Disconnected");
                 }
             })
             
@@ -101,6 +101,9 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
                 console.log(`Disconnecting from ${bleDevice.id}...`)
                 ble.cancelDeviceConnection(bleDevice.id)
                 .then(device=>{
+                    setConnected(false);
+                    setConnecting(false);
+                    setConnectState("Disconnected");
                 })
                 .catch(err=>{
                     console.log(JSON.stringify(err, null, 2))
@@ -112,9 +115,10 @@ const BtCard = ({bleDevice, navigation}:Props)=>{
         <Card>
             <Card.Title>{bleDevice.name ? bleDevice.name : bleDevice.id}</Card.Title>
             <Card.Divider/>
+            <Text># Services in device: {services}</Text>
             <View style={styles.cardText}>
-                <Button title="Logs" disabled={!connected} onPress={()=>{}}/>
-                <Button title="Services" disabled={!connected} onPress={()=>{ device && navigation.navigate('Services', {id:device.id})}}/>
+                <Button title="Logs" disabled={!bleDevice.logs || bleDevice.logs.length <= 0} onPress={()=>{navigation.navigate("Logs", {deviceId:bleDevice.id})}}/>
+                <Button title="Services" disabled={services <= 0} onPress={()=>{ navigation.navigate('Services', {deviceId:bleDevice.id})}}/>
             </View>
             <View style={styles.cardText}>
                 <Text>{bleDevice.id}</Text>

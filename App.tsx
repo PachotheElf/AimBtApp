@@ -19,6 +19,9 @@ import { Action } from 'redux';
 import Home from './components/Home';
 import { RootStackParamList } from './types';
 import { addBleDevice, BleState, clearBleDevices, setScanning } from './reducers/bleReducer';
+import Services from './components/Services';
+import Characteristics from './components/Characteristics'
+import Logs from './components/Logs';
 
 
 export const RootStack = createStackNavigator<RootStackParamList>();
@@ -64,7 +67,17 @@ export const RootStack = createStackNavigator<RootStackParamList>();
             headerRight:()=><Button 
             title={bleState.scanning?'Stop':'Scan'}
             onPress={()=>{setScan(!bleState.scanning)}}/>
-            }}/>
+          }}
+        />
+        <RootStack.Screen
+          name="Services"
+          component={Services}/>
+        <RootStack.Screen
+          name="Characteristics"
+          component={Characteristics}/>
+        <RootStack.Screen
+          name="Logs"
+          component={Logs}/>
       </RootStack.Navigator>
     </NavigationContainer>
   );

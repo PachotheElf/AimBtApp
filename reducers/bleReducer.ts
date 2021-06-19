@@ -15,6 +15,7 @@ export interface BleDeviceState{
     mtu?:number|null;
     rssi?:number|null;
     manufacturer?:string|null;
+    logs?:Array<string>
 }
 const initialState:BleState={
     devices:[],
@@ -54,10 +55,20 @@ const bleSlice = createSlice({
         },
         setScanning:(state, value?:Action<boolean>)=>{
             state.scanning = !!(value?.payload);
+        },
+        addLog:(state, value:Action<{deviceId:string, log:string}>)=>{
+            if(!value.payload) return;
+            const {deviceId, log} = value.payload;
+            const deviceState = state.devices.find(device=>{
+                return device.id == deviceId;
+            })
+            if(!deviceState) return;
+            if(!deviceState.logs) deviceState.logs = [];
+            deviceState.logs = [...deviceState.logs, log];
         }
     }
 })
 
-export const {addBleDevice, editBleDevice, clearBleDevices, setScanning} = bleSlice.actions;
+export const {addBleDevice, editBleDevice, clearBleDevices, setScanning, addLog} = bleSlice.actions;
 
 export default bleSlice.reducer;
