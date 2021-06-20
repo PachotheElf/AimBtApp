@@ -6,5 +6,6 @@ type RootStackParamList = {
     Home:undefined,
     Services:{deviceId:string},
     Characteristics:{deviceId:string, serviceUUID:string},
-    Logs:{deviceId:string}
+    Logs:{deviceId:string},
+    ExamineData:{data:string}
 }

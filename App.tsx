@@ -22,6 +22,7 @@ import { addBleDevice, BleState, clearBleDevices, setScanning } from './reducers
 import Services from './components/Services';
 import Characteristics from './components/Characteristics'
 import Logs from './components/Logs';
+import ExamineData from './components/ExamineData';
 
 
 export const RootStack = createStackNavigator<RootStackParamList>();
@@ -78,6 +79,10 @@ export const RootStack = createStackNavigator<RootStackParamList>();
         <RootStack.Screen
           name="Logs"
           component={Logs}/>
+        <RootStack.Screen
+          name="ExamineData"
+          options={{title:"Data"}}
+          component={ExamineData}/>
       </RootStack.Navigator>
     </NavigationContainer>
   );

@@ -50,11 +50,10 @@ const CharCard = ({characteristic, navigation}:Props)=>{
     try{
       dispatch(addLog({deviceId:characteristic.deviceID, log:`Reading from characteristic '${resolveUUID(characteristic.uuid, "characteristic")}' in service '${resolveUUID(characteristic.serviceUUID, "service")}'`}))
 
-      await characteristic.read();
-      console.log(characteristic);
+      const result = (await characteristic.read()).value;
 
-      if(!characteristic.value) return;
-      const decodedData = base64.decode(characteristic.value);
+      if(!result) return;
+      const decodedData = base64.decode(result);
       dispatch(addLog({deviceId:characteristic.deviceID, log:`Read '${decodedData}' to characteristic '${resolveUUID(characteristic.uuid, "characteristic")}' in service '${resolveUUID(characteristic.serviceUUID, "service")}' succeeded!`}))
       
       setReadData(decodedData);
@@ -62,12 +61,14 @@ const CharCard = ({characteristic, navigation}:Props)=>{
       dispatch(addLog({deviceId:characteristic.deviceID, log:err.message}))
     }
   }
+
+  function examine(){
+    navigation.navigate("ExamineData", {data:readData})
+  }
   
   function startWrite(){
     writeData(writeableData);
   }
-
-  function startRead(){}
   
   useEffect(()=>{
     let isMounted = true;
@@ -108,10 +109,10 @@ const CharCard = ({characteristic, navigation}:Props)=>{
           <Button title="Read" disabled={!characteristic.isReadable} onPress={doRead}/>
         </View>
         {
-          characteristic.isReadable&&<View style={styles.cardText}>
-            <Text>Preview:</Text>
-            <Text numberOfLines={1}>{readData}</Text>
-            <Button title="Examine" disabled={!readData} onPress={()=>{}}/>
+          characteristic.isReadable&&<View style={{...styles.cardText,marginVertical:4}}>
+            <Text>Data: </Text>
+            <Text numberOfLines={1} style={{maxWidth:"50%"}}>{readData}</Text>
+            <Button title="Examine" disabled={!readData} onPress={examine}/>
           </View>
         }
         <View style={styles.separator}/>
