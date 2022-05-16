@@ -14,6 +14,10 @@ if [ ! $3 ]; then
   echo "Warning: No Notes found... Using own's notes (empty)"
   NOTES=""
 fi
-TIME_STAMP=$(date --rfc-email)
+if [ "$OSTYPE" == "darwin"* ] then
+  TIME_STAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+else
+  TIME_STAMP=$(date --rfc-email)
+fi
 RELEASE_NOTE="Released on: "
 echo $RELEASE_NOTE$TIME_STAMP
